@@ -17,7 +17,8 @@
     "electron-builder": "^25.1.8"
   },
   "dependencies": {
-    "electron-store": "^10.0.0"
+    "electron-store": "^10.0.0",
+    "@ghostery/adblocker-electron": "^2.1.2"
   },
   "build": {
     "appId": "com.lightworks.youtube-music-mini-player",

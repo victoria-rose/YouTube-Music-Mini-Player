@@ -1,17 +1,26 @@
-# YouTube Music Mini Player
+# YouTube Music Mini Player (Adblock Fork)
 
-A lightweight and customizable desktop application for YouTube Music, built using [Electron](https://www.electronjs.org/). The application provides a seamless experience for controlling YouTube Music with system tray integration, media controls, and taskbar features.
+A lightweight and customizable desktop application for YouTube Music, built using [Electron](https://www.electronjs.org/). This fork adds robust ad-blocking capabilities and advanced system tray customization.
 
 ---
 
 ## Features
 
-### **System Tray Integration**
-- **Minimize to Tray**: The app minimizes to the system tray.
+### **Built-in Ad & Tracker Blocker**
+- **uBlock Origin + EasyList Integration**: Intercepts advertisements and tracking network requests using the same live filters used by uBlock Origin and EasyList.
+- **Weekly Auto-Updates**: Automatically pulls fresh rules from the source repositories once a week on startup to bypass new YouTube anti-adblock scripts.
+- **Rules Caching**: Serializes filter lists into a binary cache (`adblocker-engine.bin`) to maintain instant app startup times (~50ms).
+- **Runtime Toggle**: Enable or disable the blocker dynamically from the tray menu without restarting the app.
+
+### **Advanced System Tray Controls**
+- **Interactive Checkbox Settings**:
+  - **Block Ads & Trackers**: Toggles adblocking at runtime.
+  - **Minimize to Tray**: When enabled, minimizing the window hides it to the system tray (default is active).
+  - **Close to Tray**: When enabled, clicking the Close (×) button hides the window to the tray instead of exiting (default is active).
 - **Tray Menu**:
-  - Show/Hide the app.
+  - Show/Hide the app or floating Mini Window.
   - Playback controls: Play/Pause, Next, and Previous track.
-  - Quit the application.
+  - Quit the application (bypasses close-to-tray).
 
 ### **Media Controls**
 - **Taskbar Thumbnail Toolbar**:
@@ -37,14 +46,14 @@ A lightweight and customizable desktop application for YouTube Music, built usin
 ## Installation
 
 ### Prerequisites
-1. Install [Node.js](https://nodejs.org/) (version 14 or later).
+1. Install [Node.js](https://nodejs.org/) (version 18 or later).
 2. Install [Git](https://git-scm.com/).
 
 ### Steps
-1. Clone this repository:
+1. Clone this fork:
    ```bash
-   git clone https://github.com/yourusername/youtube-music-mini-player.git
-   cd youtube-music-mini-player
+   git clone https://github.com/victoria-rose/YouTube-Music-Mini-Player.git
+   cd YouTube-Music-Mini-Player
    ```
 2. Install dependencies:
    ```bash

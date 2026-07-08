@@ -1,8 +1,10 @@
-import { app, BrowserWindow, globalShortcut, ipcMain, Menu, nativeTheme, screen } from 'electron';
+import { app, BrowserWindow, globalShortcut, ipcMain, Menu, nativeTheme, screen, session } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import Store from 'electron-store';
 import { createTray } from './tray.js';
+import fs from 'fs';
+import { ElectronBlocker } from '@ghostery/adblocker-electron';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -26,6 +28,80 @@ const DEFAULT_TRACK_DETAILS = Object.freeze({
 });
 
 const store = new Store();
+
+// --- Persistent settings with defaults ---
+const DEFAULT_SETTINGS = {
+    adBlockEnabled: true,
+    minimizeToTray: true,
+    closeToTray: true,
+    filtersLastUpdated: 0,   // Unix ms timestamp
+};
+
+function getSetting(key) {
+    return store.get(`settings.${key}`, DEFAULT_SETTINGS[key]);
+}
+function setSetting(key, value) {
+    store.set(`settings.${key}`, value);
+}
+
+const FILTER_REFRESH_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // 1 week
+const ADBLOCKER_CACHE_PATH = path.join(app.getPath('userData'), 'adblocker-engine.bin');
+
+const FILTER_LISTS = [
+    'https://easylist.to/easylist/easylist.txt',
+    'https://easylist.to/easylist/easyprivacy.txt',
+    'https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/filters.txt',
+    'https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/unbreak.txt',
+    'https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/resources.txt'
+];
+
+let activeBlocker = null;
+
+async function setupAdBlocker() {
+    if (!getSetting('adBlockEnabled')) {
+        console.log('[ytmmp] Ad blocker disabled by user setting');
+        return;
+    }
+    try {
+        const now = Date.now();
+        const lastUpdated = getSetting('filtersLastUpdated');
+        const cacheStale = (now - lastUpdated) > FILTER_REFRESH_INTERVAL_MS;
+
+        // Use cache options: reads existing .bin, writes updated .bin
+        const cacheOptions = {
+            path: ADBLOCKER_CACHE_PATH,
+            read: fs.promises.readFile,
+            write: async (filePath, data) => {
+                await fs.promises.writeFile(filePath, data);
+                setSetting('filtersLastUpdated', Date.now());
+                console.log('[ytmmp] Filter lists refreshed and cached');
+            },
+        };
+
+        if (cacheStale) {
+            // Force re-fetch by deleting stale cache before initializing
+            try {
+                await fs.promises.unlink(ADBLOCKER_CACHE_PATH);
+            } catch (e) {
+                // Ignore error if file doesn't exist
+            }
+        }
+
+        activeBlocker = await ElectronBlocker.fromLists(fetch, FILTER_LISTS, {}, cacheOptions);
+        activeBlocker.enableBlockingInSession(session.defaultSession);
+        console.log('[ytmmp] Ad blocker active with live uBlock + EasyList filters');
+    } catch (err) {
+        console.error('[ytmmp] Ad blocker failed to initialize:', err);
+    }
+}
+
+function disableAdBlocker() {
+    if (activeBlocker) {
+        activeBlocker.disableBlockingInSession(session.defaultSession);
+        activeBlocker = null;
+        console.log('[ytmmp] Ad blocker disabled');
+    }
+}
 
 let mainWindow;
 let miniWindow;
@@ -716,8 +792,17 @@ function createMainWindow() {
     });
 
     mainWindow.on('minimize', (event) => {
-        event.preventDefault();
-        hideAllToTray({ showBalloon: true });
+        if (getSetting('minimizeToTray')) {
+            event.preventDefault();
+            hideAllToTray({ showBalloon: true });
+        }
+    });
+
+    mainWindow.on('close', (event) => {
+        if (getSetting('closeToTray') && !app.isQuitting) {
+            event.preventDefault();
+            hideMainWindowToTray({ showBalloon: true });
+        }
     });
 
     mainWindow.on('move', persistMainWindowBounds);
@@ -830,17 +915,34 @@ function updateThumbarButtons() {
 Menu.setApplicationMenu(null);
 setThemedIcons();
 
-app.whenReady().then(() => {
+let rebuildMenu;
+
+app.whenReady().then(async () => {
+    await setupAdBlocker();
     createMainWindow();
 
-    tray = createTray({
+    const trayResult = createTray({
         app,
         showMainWindow,
         showMiniWindow,
         hideAllToTray,
         executePlaybackAction,
         isAnyWindowVisible,
+        getSetting,
+        onToggleSetting: async (key, value) => {
+            setSetting(key, value);
+            if (key === 'adBlockEnabled') {
+                if (value) {
+                    await setupAdBlocker();
+                } else {
+                    disableAdBlocker();
+                }
+            }
+            rebuildMenu?.();
+        },
     });
+    tray = trayResult.tray;
+    rebuildMenu = trayResult.rebuildMenu;
 
     globalShortcut.register('CmdOrCtrl+M', () => {
         toggleMiniWindowMode();

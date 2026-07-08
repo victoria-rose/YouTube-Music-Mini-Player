@@ -7,11 +7,13 @@ A lightweight and customizable desktop application for YouTube Music, built usin
 ## Features
 
 ### **System Tray Integration**
-- **Minimize to Tray**: The app minimizes to the system tray.
+- **Minimize to Tray**: Minimize the app window directly to the system tray (toggled via tray menu).
+- **Close to Tray**: Close the app window to the system tray instead of quitting the application (toggled via tray menu).
 - **Tray Menu**:
-  - Show/Hide the app.
+  - Show/Hide the main window or Mini Window.
   - Playback controls: Play/Pause, Next, and Previous track.
-  - Quit the application.
+  - Toggles for **Minimize to Tray** and **Close to Tray** settings.
+  - Quit the application (bypasses close-to-tray).
 
 ### **Media Controls**
 - **Taskbar Thumbnail Toolbar**:
@@ -76,9 +78,11 @@ To build the app for distribution:
 ## Usage
 
 - **Run the App**: Double-click the executable after building.
-- **Minimize to Tray**: Press the minimize button on the window.
+- **Minimize to Tray**: Click the minimize button on the window. (Can be disabled via the tray menu checkbox).
+- **Close to Tray**: Click the Close (×) button on the window. (Can be disabled via the tray menu checkbox).
 - **Tray Menu**:
   - **Show App**: Reopens the main app window.
+  - **Minimize to Tray / Close to Tray**: Toggle window hiding behaviors.
   - **Play/Pause, Next, Previous**: Controls playback.
   - **Quit**: Exits the app.
 

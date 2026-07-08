@@ -27,6 +27,19 @@ const DEFAULT_TRACK_DETAILS = Object.freeze({
 
 const store = new Store();
 
+// --- Persistent settings with defaults ---
+const DEFAULT_SETTINGS = {
+    minimizeToTray: true,
+    closeToTray: true,
+};
+
+function getSetting(key) {
+    return store.get(`settings.${key}`, DEFAULT_SETTINGS[key]);
+}
+function setSetting(key, value) {
+    store.set(`settings.${key}`, value);
+}
+
 let mainWindow;
 let miniWindow;
 let tray;
@@ -716,8 +729,17 @@ function createMainWindow() {
     });
 
     mainWindow.on('minimize', (event) => {
-        event.preventDefault();
-        hideAllToTray({ showBalloon: true });
+        if (getSetting('minimizeToTray')) {
+            event.preventDefault();
+            hideAllToTray({ showBalloon: true });
+        }
+    });
+
+    mainWindow.on('close', (event) => {
+        if (getSetting('closeToTray') && !app.isQuitting) {
+            event.preventDefault();
+            hideMainWindowToTray({ showBalloon: true });
+        }
     });
 
     mainWindow.on('move', persistMainWindowBounds);
@@ -830,17 +852,26 @@ function updateThumbarButtons() {
 Menu.setApplicationMenu(null);
 setThemedIcons();
 
+let rebuildMenu;
+
 app.whenReady().then(() => {
     createMainWindow();
 
-    tray = createTray({
+    const trayResult = createTray({
         app,
         showMainWindow,
         showMiniWindow,
         hideAllToTray,
         executePlaybackAction,
         isAnyWindowVisible,
+        getSetting,
+        onToggleSetting: (key, value) => {
+            setSetting(key, value);
+            rebuildMenu?.();
+        },
     });
+    tray = trayResult.tray;
+    rebuildMenu = trayResult.rebuildMenu;
 
     globalShortcut.register('CmdOrCtrl+M', () => {
         toggleMiniWindowMode();
